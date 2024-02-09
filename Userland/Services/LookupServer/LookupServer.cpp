@@ -188,9 +188,15 @@ ErrorOr<Vector<Answer>> LookupServer::lookup(Name const& name, RecordType record
     }
 
     // Third, try our cache.
-    if (auto cached_answers = m_lookup_cache.find(name); cached_answers != m_lookup_cache.end()) {
-        for (auto& answer : cached_answers->value) {
-            // TODO: Actually remove expired answers from the cache.
+    if (auto cached_answers_iterator = m_lookup_cache.find(name); cached_answers_iterator != m_lookup_cache.end()) {
+        auto cached_answers = cached_answers_iterator->value;
+
+        // discard expired answers 
+        cached_answers.remove_all_matching([&](Answer const& answer) {
+                return answer.has_expired();
+        });
+
+        for (auto& answer : cached_answers) {
             if (answer.type() == record_type && !answer.has_expired()) {
                 dbgln_if(LOOKUPSERVER_DEBUG, "Cache hit: {} -> {}", name.as_string(), answer.record_data());
                 add_answer(answer);
